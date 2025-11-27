@@ -1,13 +1,12 @@
-const { PrismaClient } = require("@prisma/client");
+import "dotenv/config";
+import pkg from "pg";
+const { Pool } = pkg;
 
-const prisma = new PrismaClient();
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
 
-async function main() {
-  console.log("Conectando...");
-  const users = await prisma.user.findMany();
-  console.log(users);
-}
+pool.on("connect", () => console.log("Conectado ao PostgreSQL com sucesso!"));
+pool.on("error", err => console.error("Erro no Pool PostgreSQL:", err));
 
-main()
-  .catch(e => console.error(e))
-  .finally(() => prisma.$disconnect());
+export default pool;

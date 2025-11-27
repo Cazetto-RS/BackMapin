@@ -1,14 +1,13 @@
-const http = require('http');
+import express from 'express';
+import "dotenv/config";
+import "./src/database/data.js";
 
-const host = 'localhost';
-const port = 8000;
+import usersRoutes from './src/routes/usersRoutes.js';
 
-const server = http.createServer((_req, res) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello, World!\n');
-});
+const app = express();
+app.use(express.json());
 
-server.listen(port, host, () => {
-  console.log(`Server running at http://${host}:${port}/`);
-});
+app.use('/users', usersRoutes);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
