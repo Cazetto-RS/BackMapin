@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 export const getAllUsers = async () => {
   try {
     const sql = `
-      SELECT id, nome, email, nivel, criado_em 
+      SELECT *
       FROM users 
       ORDER BY id;
     `;
@@ -18,7 +18,7 @@ export const getAllUsers = async () => {
 export const getById = async (id) => {
   try {
     const sql = `
-      SELECT id, nome, email, nivel, criado_em 
+      SELECT *
       FROM users 
       WHERE id = $1;
     `;
@@ -32,7 +32,7 @@ export const getById = async (id) => {
 export const getByEmail = async (email) => {
   try {
     const sql = `
-      SELECT id, nome, email, senha, nivel, criado_em 
+      SELECT *
       FROM users 
       WHERE email = $1
       LIMIT 1;
