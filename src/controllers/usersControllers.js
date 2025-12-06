@@ -1,6 +1,7 @@
-// controllers/usuarioController.js
+// controllers/usersController.js
 import * as User  from '../models/usersModels.js';
 import * as response from '../utils/response.js';
+import * as Sessoes from '../models/sessoesModel.js';
 // import bcrypt from 'bcryptjs';
 // import jwt from 'jsonwebtoken';
 
@@ -33,11 +34,11 @@ export const getById = async (req, res) => {
     }
 };
 
-export const getByEmail = async (req, res) => {
+export const getByCpf = async (req, res) => {
     try {
-        const { email } = req.params;
+        const { cpf } = req.params;
 
-        const user = await User.getByEmail(email);
+        const user = await User.getBycpf(cpf);
 
         if (!user) {
             return response.notFound(res, "User not found");
@@ -58,7 +59,7 @@ export const createUsers = async (req, res) => {
 
     } catch (error) {
         if (error.code === "23505") { // unique_violation do PostgreSQL
-            return response.badRequest(res, "Email already in use");
+            return response.badRequest(res, "cpf already in use");
         }
 
         return response.serverError(res, error);
@@ -96,5 +97,43 @@ export const deleteUsers = async (req, res) => {
 
     } catch (error) {
         return response.serverError(res, error);
+    }
+};
+
+export const login = async (req, res) => {
+    try {
+        const { cpf, senha } = req.body;
+
+        if (!cpf || !senha) {
+            return res.status(400).json({ error: "CPF e senha são obrigatórios" });
+        }
+
+        const users = await User.login(cpf, senha);
+
+        if (!users) {
+            console.log(senha, cpf)
+            return res.status(401).json({ error: "Credenciais inválidas" });
+        }
+
+        const horas_validade = 36;
+
+        const sessao = await Sessoes.criar(users.id, horas_validade);
+
+        const token = `${users.id}.${sessao.token}`;
+
+        const data = {
+            token,
+            expiracao: sessao.validade,
+            users
+        };
+
+        return res.json({
+            message: "Login realizado com sucesso",
+            data
+        });
+
+    } catch (error) {
+        console.error("Erro no login:", error);
+        return res.status(500).json({ error: "Erro interno no servidor" });
     }
 };

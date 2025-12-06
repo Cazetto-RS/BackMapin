@@ -1,5 +1,5 @@
-import pool from '../database/data.js'
-import bcrypt from 'bcryptjs';
+import pool from "../database/data.js";
+import bcrypt from "bcryptjs";
 
 export const getAllUsers = async () => {
   try {
@@ -29,43 +29,42 @@ export const getById = async (id) => {
   }
 };
 
-export const getByEmail = async (email) => {
+export const getByCpf = async (cpf) => {
   try {
     const sql = `
       SELECT *
       FROM users 
-      WHERE email = $1
+      WHERE cpf = $1
       LIMIT 1;
     `;
-    const result = await pool.query(sql, [email]);
+    const result = await pool.query(sql, [cpf]);
     return result.rows[0] || null;
   } catch (error) {
     throw error;
   }
 };
 
-export const createUsers = async ({ nome, email, senha, nivel = 'user' }) => {
+export const createUsers = async ({
+  nome,
+  cpf,
+  senha,
+  nivel = "funcionario",
+}) => {
   try {
     const salt = await bcrypt.genSalt(10);
     const senhaHash = await bcrypt.hash(senha, salt);
 
     const sql = `
-      INSERT INTO users (nome, email, senha, nivel)
+      INSERT INTO users (nome, cpf, senha, nivel)
       VALUES ($1, $2, $3, $4)
       RETURNING id;
     `;
 
-    const result = await pool.query(sql, [
-      nome,
-      email,
-      senhaHash,
-      nivel,
-    ]);
+    const result = await pool.query(sql, [nome, cpf, senhaHash, nivel]);
 
     const novoId = result.rows[0].id;
 
     return await getById(novoId);
-
   } catch (error) {
     throw error;
   }
@@ -87,7 +86,7 @@ export const deleteUsers = async (id) => {
 
 export const updateUsers = async (id, dados) => {
   try {
-    const { nome, telefone, email, senha, nivel } = dados;
+    const { nome, cpf, senha, nivel } = dados;
 
     const campos = [];
     const valores = [];
@@ -97,9 +96,9 @@ export const updateUsers = async (id, dados) => {
       campos.push(`nome = $${contador++}`);
       valores.push(nome);
     }
-    if (email) {
-      campos.push(`email = $${contador++}`);
-      valores.push(email);
+    if (cpf) {
+      campos.push(`cpf = $${contador++}`);
+      valores.push(cpf);
     }
     if (nivel) {
       campos.push(`nivel = $${contador++}`);
@@ -119,9 +118,9 @@ export const updateUsers = async (id, dados) => {
 
     const sql = `
       UPDATE users
-      SET ${campos.join(', ')}
+      SET ${campos.join(", ")}
       WHERE id = $${contador}
-      RETURNING id, nome, email, nivel, criado_em;
+      RETURNING id, nome, cpf, nivel, criado_em;
     `;
 
     const result = await pool.query(sql, valores);
@@ -129,8 +128,20 @@ export const updateUsers = async (id, dados) => {
     if (result.rows.length === 0) return null;
 
     return result.rows[0];
-
   } catch (error) {
     throw error;
   }
+};
+
+export const login = async (cpf, senha) => {
+  const user  = await getByCpf(cpf);
+  console.log("USUÁRIO ENCONTRADO:", user);
+
+  if (!user) return null;
+
+  const senhaValida = await bcrypt.compare(senha, user.senha);
+  if (!senhaValida) return null;
+
+  delete user.senha;
+  return user;
 };

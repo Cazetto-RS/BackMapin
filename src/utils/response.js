@@ -8,6 +8,13 @@ export const success = (res, message = "Success", data = null, status = 200) => 
     });
 };
 
+export const error = (res, message = "Internal server error", status = 500) => {
+    return res.status(status).json({
+        success: false,
+        message
+    });
+};
+
 export const created = (res, message = "Created successfully", data = null) => {
     return res.status(201).json({
         success: true,
