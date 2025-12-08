@@ -2,36 +2,38 @@
 import * as User  from '../models/usersModels.js';
 import * as response from '../utils/response.js';
 import * as Sessoes from '../models/sessoesModel.js';
+
+import { getEnterpriseId } from "../utils/getEnterpriseId.js";
+
 // import bcrypt from 'bcryptjs';
 // import jwt from 'jsonwebtoken';
 
-
 export const getAllUsers = async (req, res) => {
-    try {
-        const users = await User.getAllUsers();
-
-        return response.success(res, "Users fetched successfully", users);
-
-    } catch (error) {
-        return response.serverError(res, error);
-    }
+  try {
+    const enterpriseId = getEnterpriseId(req);
+    const users = await User.getAllUsers(enterpriseId);
+    return response.success(res, "Users fetched successfully", users);
+  } catch (error) {
+    return response.serverError(res, error);
+  }
 };
 
 export const getById = async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
+    const enterpriseId = getEnterpriseId(req);
+  
+    const user = await User.getById(id);
 
-        const user = await User.getById(id);
-
-        if (!user) {
-            return response.notFound(res, "User not found");
-        }
-
-        return response.success(res, "User fetched successfully", user);
-
-    } catch (error) {
-        return response.serverError(res, error);
+    if (!user || user.enterprise_id !== enterpriseId) {
+      return response.forbidden(res, "You cannot access this user");
     }
+
+    return response.success(res, "User fetched successfully", user);
+
+  } catch (error) {
+    return response.serverError(res, error);
+  }
 };
 
 export const getByCpf = async (req, res) => {
@@ -52,18 +54,22 @@ export const getByCpf = async (req, res) => {
 };
 
 export const createUsers = async (req, res) => {
-    try {
-        const newUser = await User.createUsers(req.body);
+  try {
+    const enterpriseId = getEnterpriseId(req);
 
-        return response.created(res, "User created successfully", newUser);
+    const newUser = await User.createUsers({
+      ...req.body,
+      enterprise_id: enterpriseId,
+    });
 
-    } catch (error) {
-        if (error.code === "23505") { // unique_violation do PostgreSQL
-            return response.badRequest(res, "cpf already in use");
-        }
+    return response.created(res, "User created successfully", newUser);
 
-        return response.serverError(res, error);
+  } catch (error) {
+    if (error.code === "23505") {
+      return response.badRequest(res, "CPF already registered");
     }
+    return response.serverError(res, error);
+  }
 };
 
 export const updateUsers = async (req, res) => {
@@ -84,20 +90,20 @@ export const updateUsers = async (req, res) => {
 };
 
 export const deleteUsers = async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
+    const enterpriseId = getEnterpriseId(req);
 
-        const deleted = await User.deleteUsers(id);
-
-        if (!deleted) {
-            return response.notFound(res, "User not found");
-        }
-
-        return response.deleted(res, "User deleted successfully");
-
-    } catch (error) {
-        return response.serverError(res, error);
+    const user = await User.getById(id);
+    if (!user || user.enterprise_id !== enterpriseId) {
+      return response.forbidden(res, "Access denied");
     }
+
+    await User.deleteUsers(id);
+    return response.deleted(res, "User deleted");
+  } catch (error) {
+    return response.serverError(res, error);
+  }
 };
 
 export const login = async (req, res) => {

@@ -2,6 +2,10 @@ import * as sessoesModel from '../models/sessoesModel.js';
 import * as sessoesCache from '../utils/sessoesCache.js';
 import * as responses from '../utils/response.js';
 
+// importa models:
+import * as Enterprise from '../models/enterpriseModels.js';
+import * as Users from '../models/usersModels.js';
+
 export default async function autenticar(req, res, next) {
     try {
         const authorizationHeader = req.headers["authorization"];
@@ -13,7 +17,6 @@ export default async function autenticar(req, res, next) {
             });
         }
 
-        // Formato esperado: Bearer loginId.token
         const [bearer, fullToken] = authorizationHeader.split(" ");
 
         if (bearer !== "Bearer" || !fullToken) {
@@ -23,7 +26,6 @@ export default async function autenticar(req, res, next) {
             });
         }
 
-        // Token está no formato "loginId.token"
         const [loginId, token] = fullToken.split(".");
 
         if (!loginId || !token) {
@@ -33,49 +35,54 @@ export default async function autenticar(req, res, next) {
             });
         }
 
-        // 1️⃣ Tentativa de encontrar no cache
-        let sessao = sessoesCache.buscarSessao(loginId, );
-
-        if (sessao) {
-            req.loginId = loginId;
-            return next();
-        }
-
-        // 2️⃣ Buscar no banco de dados
-        sessao = await sessoesModel.buscarSessao(loginId, token);
+        // 1️⃣ Buscar no cache
+        let sessao = sessoesCache.buscarSessao(loginId);
 
         if (!sessao) {
-            return responses.error(res, {
-                statusCode: 498,
-                message: "Token de autenticação inválido"
-            });
-        }
+            // 2️⃣ Buscar no banco
+            sessao = await sessoesModel.buscarSessao(loginId, token);
 
-        // 3️⃣ Verificar validade do token
-        const validade = new Date(sessao.validade);
-        const agora = new Date();
-
-        if (validade < agora) {
-            return responses.error(res, {
-                statusCode: 498,
-                message: "Token de autenticação expirou"
-            });
-        }
-
-        // 4️⃣ Se expira em menos de 60 min → renova
-        const minutosRestantes = (validade - agora) / 60000;
-
-        if (minutosRestantes < 60) {
-            const estendeu = await sessoesModel.extender(loginId, 24);
-            if (estendeu) {
-                console.log(`Token estendido por +24h (ID = ${loginId})`);
+            if (!sessao) {
+                return responses.error(res, {
+                    statusCode: 498,
+                    message: "Token de autenticação inválido"
+                });
             }
+
+            // 3️⃣ Validar tempo
+            const validade = new Date(sessao.validade);
+            if (validade < new Date()) {
+                return responses.error(res, {
+                    statusCode: 498,
+                    message: "Token expirado"
+                });
+            }
+
+            sessoesCache.addSessao(loginId, token);
         }
 
-        // 5️⃣ Salvar no cache
-        sessoesCache.addSessao(loginId, token);
+        // 4️⃣ VERIFICAR SE É ENTERPRISE OU USER
+        let enterprise = await Enterprise.getById(loginId);
+        let user = null;
 
-        // 6️⃣ Disponibilizar loginId para as rotas
+        if (!enterprise) {
+            user = await Users.getById(loginId);
+        }
+
+        if (!enterprise && !user) {
+            return responses.error(res, {
+                statusCode: 498,
+                message: "Entidade não encontrada para este token"
+            });
+        }
+
+        // 5️⃣ COLOCAR TIPO CORRETO NA REQUEST
+        if (enterprise) {
+            req.enterprise = enterprise;
+        } else {
+            req.user = user;
+        }
+
         req.loginId = loginId;
 
         return next();

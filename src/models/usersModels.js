@@ -1,14 +1,15 @@
 import pool from "../database/data.js";
 import bcrypt from "bcryptjs";
 
-export const getAllUsers = async () => {
+export const getAllUsers = async (enterpriseId) => {
   try {
     const sql = `
       SELECT *
       FROM users 
+      WHERE enterprise_id = $1
       ORDER BY id;
     `;
-    const result = await pool.query(sql);
+    const result = await pool.query(sql, [enterpriseId]);
     return result.rows;
   } catch (error) {
     throw error;
@@ -49,18 +50,19 @@ export const createUsers = async ({
   cpf,
   senha,
   nivel = "funcionario",
+  enterprise_id,
 }) => {
   try {
     const salt = await bcrypt.genSalt(10);
     const senhaHash = await bcrypt.hash(senha, salt);
 
     const sql = `
-      INSERT INTO users (nome, cpf, senha, nivel)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id;
+    INSERT INTO users (nome, cpf, senha, nivel, enterprise_id)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, nome, cpf, nivel, enterprise_id;
     `;
 
-    const result = await pool.query(sql, [nome, cpf, senhaHash, nivel]);
+    const result = await pool.query(sql, [nome, cpf, senhaHash, nivel, enterprise_id]);
 
     const novoId = result.rows[0].id;
 
@@ -84,57 +86,57 @@ export const deleteUsers = async (id) => {
   }
 };
 
-export const updateUsers = async (id, dados) => {
-  try {
-    const { nome, cpf, senha, nivel } = dados;
+// export const updateUsers = async (id, dados) => {
+//   try {
+//     const { nome, cpf, senha, nivel } = dados;
 
-    const campos = [];
-    const valores = [];
-    let contador = 1;
+//     const campos = [];
+//     const valores = [];
+//     let contador = 1;
 
-    if (nome) {
-      campos.push(`nome = $${contador++}`);
-      valores.push(nome);
-    }
-    if (cpf) {
-      campos.push(`cpf = $${contador++}`);
-      valores.push(cpf);
-    }
-    if (nivel) {
-      campos.push(`nivel = $${contador++}`);
-      valores.push(nivel);
-    }
-    if (senha) {
-      const hash = await bcrypt.hash(senha, 10);
-      campos.push(`senha = $${contador++}`);
-      valores.push(hash);
-    }
+//     if (nome) {
+//       campos.push(`nome = $${contador++}`);
+//       valores.push(nome);
+//     }
+//     if (cpf) {
+//       campos.push(`cpf = $${contador++}`);
+//       valores.push(cpf);
+//     }
+//     if (nivel) {
+//       campos.push(`nivel = $${contador++}`);
+//       valores.push(nivel);
+//     }
+//     if (senha) {
+//       const hash = await bcrypt.hash(senha, 10);
+//       campos.push(`senha = $${contador++}`);
+//       valores.push(hash);
+//     }
 
-    if (campos.length === 0) {
-      throw new Error("Nenhum campo válido enviado para atualização.");
-    }
+//     if (campos.length === 0) {
+//       throw new Error("Nenhum campo válido enviado para atualização.");
+//     }
 
-    valores.push(id);
+//     valores.push(id);
 
-    const sql = `
-      UPDATE users
-      SET ${campos.join(", ")}
-      WHERE id = $${contador}
-      RETURNING id, nome, cpf, nivel, criado_em;
-    `;
+//     const sql = `
+//       UPDATE users
+//       SET ${campos.join(", ")}
+//       WHERE id = $${contador}
+//       RETURNING id, nome, cpf, nivel, criado_em;
+//     `;
 
-    const result = await pool.query(sql, valores);
+//     const result = await pool.query(sql, valores);
 
-    if (result.rows.length === 0) return null;
+//     if (result.rows.length === 0) return null;
 
-    return result.rows[0];
-  } catch (error) {
-    throw error;
-  }
-};
+//     return result.rows[0];
+//   } catch (error) {
+//     throw error;
+//   }
+// };
 
 export const login = async (cpf, senha) => {
-  const user  = await getByCpf(cpf);
+  const user = await getByCpf(cpf);
   console.log("USUÁRIO ENCONTRADO:", user);
 
   if (!user) return null;

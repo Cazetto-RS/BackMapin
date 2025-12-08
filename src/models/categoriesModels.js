@@ -1,75 +1,74 @@
 import pool from '../database/data.js'
 
-export const getAllCategories = async () => {
+// Helper para evitar duplicação no controller
+export const getAllCategories = async (enterpriseId) => {
   try {
     const sql = `
       SELECT * 
       FROM categories 
+      WHERE enterprise_id = $1
       ORDER BY id;
     `;
-    const result = await pool.query(sql);
+    const result = await pool.query(sql, [enterpriseId]);
     return result.rows;
   } catch (error) {
     throw error;
   }
 };
 
-export const getById = async (id) => {
+export const getById = async (id, enterpriseId) => {
   try {
     const sql = `
       SELECT *
       FROM categories 
-      WHERE id = $1;
+      WHERE id = $1 AND enterprise_id = $2;
     `;
-    const result = await pool.query(sql, [id]);
+    const result = await pool.query(sql, [id, enterpriseId]);
     return result.rows[0] || null;
   } catch (error) {
     throw error;
   }
 };
 
-export const getByName = async (nome) => {
+export const getByName = async (nome, enterpriseId) => {
   try {
     const sql = `
       SELECT *
       FROM categories 
-      WHERE nome = $1;
+      WHERE nome = $1 AND enterprise_id = $2;
     `;
-    const result = await pool.query(sql, [nome]);
-    return result.rows[0] || null;
+    const result = await pool.query(sql, [nome, enterpriseId]);
+    return result.rows;
   } catch (error) {
     throw error;
   }
 };
 
-export const createCategories = async ({ nome }) => {
+export const createCategories = async ({ nome }, enterpriseId) => {
   try {
     const sql = `
-      INSERT INTO categories (nome)
-      VALUES ($1)
+      INSERT INTO categories (nome, enterprise_id)
+      VALUES ($1, $2)
       RETURNING id;
     `;
 
-    const result = await pool.query(sql, [
-      nome
-    ]);
-
+    const result = await pool.query(sql, [nome, enterpriseId]);
     const novoId = result.rows[0].id;
 
-    return await getById(novoId);
+    return await getById(novoId, enterpriseId);
 
   } catch (error) {
     throw error;
   }
 };
 
-export const deleteCategories = async (id) => {
+export const deleteCategories = async (id, enterpriseId) => {
   try {
-    const exists = await getById(id);
+    const exists = await getById(id, enterpriseId);
     if (!exists) return false;
 
-    const sql = `DELETE FROM categories WHERE id = $1;`;
-    await pool.query(sql, [id]);
+    const sql = `DELETE FROM categories WHERE id = $1 AND enterprise_id = $2`;
+    await pool.query(sql, [id, enterpriseId]);
 
     return true;
   } catch (error) {
@@ -77,7 +76,7 @@ export const deleteCategories = async (id) => {
   }
 };
 
-export const updateCategories = async (id, dados) => {
+export const updateCategories = async (id, dados, enterpriseId) => {
   try {
     const { nome } = dados;
 
@@ -91,11 +90,12 @@ export const updateCategories = async (id, dados) => {
     }
 
     valores.push(id);
+    valores.push(enterpriseId);
 
     const sql = `
       UPDATE categories
       SET ${campos.join(', ')}
-      WHERE id = $${contador}
+      WHERE id = $${contador++} AND enterprise_id = $${contador}
       RETURNING id, nome;
     `;
 
