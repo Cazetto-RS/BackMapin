@@ -44,15 +44,15 @@ export const getByName = async (nome, enterpriseId) => {
   }
 };
 
-export const createProducts = async ({ nome }, enterpriseId) => {
+export const createProducts = async ({ nome, categoria_id, location_id, quantidade, descricao, codigo_barras, foto_url, valor, marca }, enterpriseId) => {
   try {
     const sql = `
-      INSERT INTO products (nome, categoria_id, location_id, quantidade, descricao, codigo_barras, foto_url, enterprise_id, valor, marca)
+      INSERT INTO products (nome, categoria_id, location_id, quantidade, descricao, codigo_barras, foto_url, valor, marca, enterprise_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id;
     `;
 
-    const result = await pool.query(sql, [nome, enterpriseId]);
+    const result = await pool.query(sql, [nome, categoria_id, location_id, quantidade, descricao, codigo_barras, foto_url, valor, marca, enterpriseId]);
     const novoId = result.rows[0].id;
 
     return await getById(novoId, enterpriseId);

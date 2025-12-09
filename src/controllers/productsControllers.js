@@ -44,9 +44,9 @@ export const getById = async (req, res) => {
 export const getByName = async (req, res) => {
     try {
         const enterpriseId = getEnterpriseId(req);
-        const { name } = req.params;
+        const { corredor, prateleira, setor } = req.params;
 
-        const products = await Products.getByName(name, enterpriseId);
+        const products = await Products.getByName(corredor, prateleira, setor, enterpriseId);
 
         return response.success(res, "Categories fetched successfully", products);
 
@@ -59,9 +59,9 @@ export const getByName = async (req, res) => {
 export const createProducts = async (req, res) => {
     try {
         const enterpriseId = getEnterpriseId(req);
-        const newProduct = await Products.createProducts(req.body, enterpriseId);
+        const newLocations = await Products.createProducts(req.body, enterpriseId);
 
-        return response.created(res, "Products created successfully", newProduct);
+        return response.created(res, "Locations created successfully", newLocations);
 
     } catch (error) {
         return response.serverError(res, error);
@@ -74,13 +74,13 @@ export const updateProducts = async (req, res) => {
         const enterpriseId = getEnterpriseId(req);
         const { id } = req.params;
 
-        const updatedProduct = await Products.updateProducts(id, req.body, enterpriseId);
+        const updatedLocations = await Locations.updateLocations(id, req.body, enterpriseId);
 
-        if (!updatedProduct) {
-            return response.notFound(res, "Products not found");
+        if (!updatedLocations) {
+            return response.notFound(res, "Locations not found");
         }
 
-        return response.updated(res, "Products updated successfully", updatedProduct);
+        return response.updated(res, "Locations updated successfully", updatedLocations);
 
     } catch (error) {
         return response.serverError(res, error);
